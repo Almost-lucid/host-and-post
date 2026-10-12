@@ -28,9 +28,9 @@ Technical detail for people wiring this up themselves (or for AIs that need the 
 
 ### How it works
 
-- **Issue build** (`.github/workflows/build.yml`): owner opens a **New demo** issue with a pasted page → guard HTML → smoke + record → commit to `main` → Pages → Live comment + drafts. Soft smoke: publish even if the check fails.
+- **Issue build** (`.github/workflows/build.yml`): owner opens a **New demo** issue with a pasted page → guard HTML → smoke + record → commit to `main` → Pages → **Live** + video (if present) + drafts as a comment on the **issue** (no PR). Soft smoke: publish even if the check fails. Shares the `pages` concurrency group with deploy.
 - **PR path** (`.github/workflows/smoke-and-record.yml` + `slug-guard.yml`): AI or human opens a PR under `demos/<slug>/` only. Checks must pass; a human merges. Template edits need an admin-applied `protocol` label.
-- **Deploy** (`.github/workflows/deploy.yml`): on `main` pushes that touch demos/tools (not `github-actions[bot]`), rebuilds the site, records missing videos, publishes Pages, leaves drafts on the commit.
+- **Deploy** (`.github/workflows/deploy.yml`): on `main` pushes that touch demos/tools (not `github-actions[bot]`), rebuilds the site, records missing videos, publishes Pages, then posts **Live** + video (if present) + drafts on the **merged PR** (looks up `GET /repos/.../commits/{sha}/pulls`). If there is no PR, the same comment goes on the commit. Needs `pull-requests: write`; the comment step stays in the deploy job (never runs page code).
 - Both `build.yml` and `deploy.yml` share `concurrency: { group: pages, cancel-in-progress: false }` so Pages deploys never race.
 - At deploy time, `START-HERE.md` is copied to `/start.txt` (plain text) on Pages.
 

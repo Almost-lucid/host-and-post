@@ -87,7 +87,9 @@ When the pull request exists, tell them: **click Merge**. You never merge yourse
 
 ### 7) Live link and drafts
 
-After they merge, point them to the **bot’s comment on their pull request**. That comment has the live link, the video, and the LinkedIn / X drafts. **Nothing has been posted.**
+After they merge, point them to the **bot’s comment on their pull request**. That comment has the **Live** link, the **video** when one was recorded, and LinkedIn / X **drafts**. **Nothing has been posted.**
+
+If there was no pull request (rare — a direct push), the same comment is on the merge commit instead.
 
 If the page or the comment isn’t there yet, tell them: **wait a minute and refresh**. Do **not** guess URLs.
 

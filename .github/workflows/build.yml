@@ -1,7 +1,7 @@
 name: build
 on:
   issues:
-    types: [opened, labeled]
+    types: [opened]
 permissions:
   contents: write
   pages: write
@@ -10,7 +10,7 @@ permissions:
   models: read
 concurrency:
   group: build-${{ github.event.issue.number }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   build:
     if: >-

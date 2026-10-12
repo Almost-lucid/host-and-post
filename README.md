@@ -42,7 +42,8 @@ In plain terms: a scoped AI can only change this one repo, and your review (or t
 
 ## Optional: Lock it down
 
-Needs admin. Without a ruleset, nothing technically stops a write-access account pushing to `main`. Create labels `build`, `replace`, and `protocol`, then a branch ruleset on `main` requiring checks `smoke-and-record` and `slug-guard` (and `build` if you want).
+Needs admin. Without a ruleset, nothing technically stops a write-access account pushing to `main`.
+**Note:** the one-click issue build commits to `main` as `github-actions[bot]`. If your ruleset requires a pull request, add a bypass for GitHub Actions — or skip Lock it down and use the paste route. Create labels `build`, `replace`, and `protocol`, then a branch ruleset on `main` requiring checks `smoke-and-record` and `slug-guard` (and `build` if you want).
 
 ```sh
 gh label create build -R <you>/<repo> -d "Build a demo from a New demo issue"

@@ -10,39 +10,42 @@ From one short idea to a **live demo**, a **video**, and **two post drafts** —
 
 3. **Watch the issue.** You’ll see `Building…`, then a **Live** link, a **video** link, and LinkedIn / X drafts. **Nothing has been posted.**
 
-### Free ChatGPT → prefilled New demo link
+### Free ChatGPT → page + prefilled New demo link
 
-Do this on a laptop where you’re signed into GitHub. Paste the whole block into ChatGPT (free is fine):
+Do this on a **laptop where you’re signed into GitHub**. Paste the whole block into ChatGPT (free is fine):
 
 ```text
 I want to open a GitHub "New demo" issue for my Host and Post repo.
 
 Ask me once for my GitHub username and repository name, then help me shape one small demo idea (one screen, one main action).
 
-Safety and simplicity rules for the demo (keep these when you write the spec):
-- Plain HTML/CSS/JS only; no frameworks, CDN, <script src>, fetch/XHR, backend, accounts, API keys, or personal data
-- Under ~300 lines; works at phone width; sample/placeholder data only
+Then write the full page in ONE fenced code block. Rules:
+- Complete file from <!doctype html> through </html> — never abbreviate, never say "rest unchanged"
+- Under 300 lines; plain HTML/CSS/JS only
+- No frameworks, CDN, <script src>, fetch/XHR/WebSocket, backend, accounts, API keys, or personal data
+- Works at phone width; sample/placeholder data only; include <title> and <meta name="description">
 - If it would need a server, fake it with sample data
 
-Then output exactly:
-1) A short plain-text idea (a few words) and a 3–5 line spec of what it should do.
-2) ONE URL (URL-encoded) in this exact shape, with query params in this order so a truncated link still keeps the title:
+Then output:
+1) A short plain-text idea and a 3–5 line spec.
+2) The ONE code block with the full HTML.
+3) ONE URL (URL-encoded) with only title, idea, and spec (the page is too long for a URL), params in this order:
 https://github.com/<username>/<repo>/issues/new?template=new-demo.yml&title=<urlencode("New demo: " + idea)>&idea=<urlencode(idea)>&spec=<urlencode(spec)>
 
-Tell me to tap that link, check the form, then click Submit.
-If the link breaks, tell me to open Issues → New demo and paste the plain-text idea and spec myself.
+Tell me to: tap the link, paste the code block into the form field "Paste your page", then click Submit.
+If the link breaks: Issues → New demo, paste idea/spec/page myself.
 ```
 
-Example of a generated link (for `Almost-lucid/hp-dryrun`):
+Example link (page is pasted into the form, not the URL):
 
 https://github.com/Almost-lucid/hp-dryrun/issues/new?template=new-demo.yml&title=New%20demo%3A%20tip%20splitter&idea=tip%20splitter&spec=Enter%20a%20bill%20in%20pounds%2C%20pick%20a%20tip%20percent%2C%20set%20how%20many%20people%2C%20and%20show%20what%20each%20person%20pays.
 
 ### What we won’t host
 No accounts, no real personal data, no secret API keys, no backends. Demos are small public static pages with sample data. If the idea needs a server, the build should fake it with placeholders.
 
-## Paste fallback (works with free ChatGPT)
+## File paste fallback
 
-If the one-click build isn’t available, paste a page in by hand:
+If you prefer not to use the issue form, you can still commit a file by hand:
 
 1. Ask ChatGPT (or any AI) something like:
 
@@ -97,7 +100,7 @@ Leave empty unless you use a custom domain.
 
 ## Good to know
 - Everything published on Pages is public. Placeholder data only.
-- The one-click issue build uses GitHub Models with your `GITHUB_TOKEN` (no secrets to add). If Models isn’t available on the account, use the paste fallback.
+- Prefer pasting a complete page into **Paste your page** on the New demo form (ChatGPT prompt above). If that field is empty, the workflow tries GitHub Models; when Models isn’t available it says so in a comment.
 - Template edits need the `protocol` label to pass `slug-guard`.
 - Run locally: `npm install && npx playwright install --with-deps chromium`, then `node tools/smoke_record.mjs <slug>` (needs `ffmpeg`).
 

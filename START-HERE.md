@@ -8,7 +8,7 @@ You are helping someone make a small web demo with **Host and Post**. Coach them
 
 ## Names you will reuse
 
-Ask once for her **GitHub username**. After she creates the project, remember the **project name** she used (default `my-demos`, or `my-demos-2` / similar if the name was taken). From then on, build every link from those two values:
+Ask once for their **GitHub username**. After they create the project, remember the **project name** they used (default `my-demos`, or `my-demos-2` / similar if the name was taken). From then on, build every link from those two values:
 
 - Project: `https://github.com/<username>/<name>`
 - Pages settings: `https://github.com/<username>/<name>/settings/pages`
@@ -24,21 +24,21 @@ Their new copy already includes a **tip-splitter** demo. It’s only an example 
 
 If they don’t have one: open https://github.com/signup, create an account, then come back here.
 
-Ask for her **GitHub username** once (the one in `github.com/<username>`). You will reuse it below.
+Ask for their **GitHub username** once (the one in `github.com/<username>`). You will reuse it below.
 
 ### 2) Use this template
 
-Send her this ready-made link (name `my-demos` and **Public** are pre-filled):
+Send them this ready-made link (name `my-demos` and **Public** are pre-filled):
 
 https://github.com/new?template_owner=Almost-lucid&template_name=host-and-post&name=my-demos&visibility=public
 
-1. She opens the link while signed into GitHub and creates the project
-2. If GitHub says the name is taken, she picks another (for example `my-demos-2`) — **use that name from then on**
-3. Confirm she’s on her new project page: `https://github.com/<username>/<name>`
+1. They open the link while signed into GitHub and create the project
+2. If GitHub says the name is taken, they pick another (for example `my-demos-2`) — **use that name from then on**
+3. Confirm they’re on their new project page: `https://github.com/<username>/<name>`
 
 ### 3) Turn on Pages
 
-Send her straight to:
+Send them straight to:
 
 https://github.com/<username>/<name>/settings/pages
 

@@ -3,11 +3,9 @@ name: slug-guard
 # Safe here because the job never runs code from the PR: it only reads the list of changed paths.
 on:
   pull_request_target:
-    # labeled/unlabeled: re-check when an admin adds/removes the replace label
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [opened, synchronize, reopened]
 permissions:
   contents: read
-  issues: read
   pull-requests: write
 jobs:
   slug-guard:
@@ -24,25 +22,11 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
         run: |
           git fetch -q origin "pull/$PR/head"
 
-          # replace only counts when a repo admin was the last to add it
-          label_ok() {
-            case ",$LABELS," in *",$1,"*) ;; *) return 1 ;; esac
-            actor=$(gh api "repos/$REPO/issues/$PR/events" --paginate \
-              --jq ".[] | select(.event == \"labeled\" and .label.name == \"$1\") | .actor.login" | tail -n1)
-            [ -n "$actor" ] || return 1
-            perm=$(gh api "repos/$REPO/collaborators/$actor/permission" --jq .permission 2>/dev/null || echo none)
-            if [ "$perm" = admin ]; then echo "'$1' label added by $actor (admin)"; return 0; fi
-            echo "::warning::Ignoring the '$1' label: it was added by $actor ($perm), not a repo admin."
-            return 1
-          }
-          REPLACE=false; label_ok replace && REPLACE=true
-
           fail=0
-          outside=""
+          warn_paths=""
           while IFS=$'\t' read -r status path rest; do
             # Renames report the old path in $path and the new one in $rest; check both.
             for f in "$path" $rest; do
@@ -52,44 +36,40 @@ jobs:
                   if ! [[ "$slug" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
                     echo "::error::Demo folder name '$slug' must be lowercase letters, digits, and hyphens only (like tip-splitter)."
                     fail=1
-                  elif git cat-file -e "$BASE:demos/$slug" 2>/dev/null && [ "$REPLACE" != "true" ]; then
-                    echo "::error file=$f::demos/$slug already exists on the base branch. Pick a new name, or have an admin add the 'replace' label."
-                    fail=1
+                  elif git cat-file -e "$BASE:demos/$slug" 2>/dev/null; then
+                    warn_paths="$warn_paths $f"
                   fi ;;
                 *)
-                  outside="$outside $f"
+                  warn_paths="$warn_paths $f"
                   ;;
               esac
             done
           done < <(git diff --name-status -M "$BASE...$HEAD_SHA")
 
-          if [ -n "$(echo "$outside" | tr -d ' ')" ]; then
-            # One plain-words warning (job summary + at most one PR comment)
+          if [ -n "$(echo "$warn_paths" | tr -d ' ')" ]; then
             {
-              echo "### Template / non-demo files changed"
+              echo "### Note about this pull request"
               echo ""
-              echo "This pull request changes files outside \`demos/\`:"
+              echo "These paths change an existing demo or files outside \`demos/\`:"
               echo ""
-              for f in $outside; do echo "- \`$f\`"; done
+              for f in $warn_paths; do echo "- \`$f\`"; done
               echo ""
-              echo "That’s fine for template edits. Demo PRs should usually only add a new folder under \`demos/\`."
+              echo "That’s allowed. For a normal new demo, only add files under a new \`demos/<name>/\` folder."
             } | tee -a "$GITHUB_STEP_SUMMARY"
 
             MARKER='<!-- host-and-post:outside-demos-warning -->'
             if gh api "repos/$REPO/issues/$PR/comments" --paginate \
               --jq ".[].body" | grep -Fq "$MARKER"; then
-              echo "Outside-demos warning comment already present; not posting again."
+              echo "Warning comment already present; not posting again."
             else
               {
                 echo "$MARKER"
-                echo "This pull request changes files outside \`demos/\` (the template itself, not just a new demo)."
+                echo "This pull request changes an existing demo or files outside \`demos/\`."
                 echo ""
                 echo "That’s allowed. For a normal new demo, only add files under a new \`demos/<name>/\` folder."
-                echo ""
-                echo "— EngGrok"
               } > /tmp/outside_warn.md
               gh api -X POST "repos/$REPO/issues/$PR/comments" -f body="$(cat /tmp/outside_warn.md)"
-              echo "Posted outside-demos warning on PR #$PR"
+              echo "Posted warning on PR #$PR"
             fi
           fi
 

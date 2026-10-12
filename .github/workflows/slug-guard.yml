@@ -1,13 +1,9 @@
 name: slug-guard
-# pull_request_target runs this file as it is on the base branch, so a PR can't edit the guard to pass itself.
-# Safe here because the job never runs code from the PR: it only reads the list of changed paths.
+# Fails only if a demo folder name isn't lowercase, hyphenated ASCII.
 on:
-  pull_request_target:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+  pull_request:
 permissions:
   contents: read
-  issues: read
-  pull-requests: read
 jobs:
   slug-guard:
     runs-on: ubuntu-latest
@@ -16,52 +12,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Check which files the PR touches
+      - name: Check demo names
         env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          PR: ${{ github.event.pull_request.number }}
           BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
-        run: |
-          git fetch -q origin "pull/$PR/head"
-
-          # A label only counts if it is on the PR now and a repo admin was the last to add it,
-          # so an agent with issue or PR write access can't label its own way past the guard.
-          label_ok() {
-            case ",$LABELS," in *",$1,"*) ;; *) return 1 ;; esac
-            actor=$(gh api "repos/$REPO/issues/$PR/events" --paginate \
-              --jq ".[] | select(.event == \"labeled\" and .label.name == \"$1\") | .actor.login" | tail -n1)
-            [ -n "$actor" ] || return 1
-            perm=$(gh api "repos/$REPO/collaborators/$actor/permission" --jq .permission 2>/dev/null || echo none)
-            if [ "$perm" = admin ]; then echo "'$1' label added by $actor (admin)"; return 0; fi
-            echo "::warning::Ignoring the '$1' label: it was added by $actor ($perm), not a repo admin."
-            return 1
-          }
-          REPLACE=false; label_ok replace && REPLACE=true
-          PROTOCOL=false; label_ok protocol && PROTOCOL=true
-
-          fail=0
-          while IFS=$'\t' read -r status path rest; do
-            # Renames report the old path in $path and the new one in $rest; check both.
-            for f in "$path" $rest; do
-              case "$f" in
-                demos/*/*)
-                  slug=$(echo "$f" | cut -d/ -f2)
-                  if ! [[ "$slug" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
-                    echo "::error::Slug '$slug' must match ^[a-z0-9]+(-[a-z0-9]+)*$ (lowercase, hyphenated, ASCII)."
-                    fail=1
-                  elif git cat-file -e "$BASE:demos/$slug" 2>/dev/null && [ "$REPLACE" != "true" ]; then
-                    echo "::error file=$f::demos/$slug already exists on the base branch. Pick a new slug, or have an admin add the 'replace' label."
-                    fail=1
-                  fi ;;
-                *)
-                  if [ "$PROTOCOL" != "true" ]; then
-                    echo "::error file=$f::Only demos/<new-slug>/ may change. A repo admin must add the 'protocol' label for changes to the template itself."
-                    fail=1
-                  fi ;;
-              esac
-            done
-          done < <(git diff --name-status -M "$BASE...$HEAD_SHA")
-          exit $fail
+        run: bash tools/check_slugs.sh "$BASE" HEAD

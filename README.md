@@ -71,7 +71,7 @@ In plain terms: a scoped AI can only change this one repo, and your review (or t
 ## Optional: Lock it down
 
 Needs admin. Without a ruleset, nothing technically stops a write-access account pushing to `main`.
-**Note:** the one-click issue build commits to `main` as `github-actions[bot]`. If your ruleset requires a pull request, add a bypass for GitHub Actions — or skip Lock it down and use the paste route. Create labels `build`, `replace`, and `protocol`, then a branch ruleset on `main` requiring checks `smoke-and-record` and `slug-guard` (and `build` if you want).
+**Note:** the one-click issue build commits to `main` as `github-actions[bot]`. If your ruleset requires a pull request, add a bypass for GitHub Actions — or skip Lock it down and use the paste route. Create labels `build`, `replace`, and `protocol`, then a branch ruleset on `main` requiring checks `smoke-and-record` and `slug-guard` (and `build` if you want). The `replace` and `protocol` labels only count when a repo admin adds them; `slug-guard` ignores them if anyone else does, including the AI.
 
 ```sh
 gh label create build -R <you>/<repo> -d "Build a demo from a New demo issue"
@@ -101,7 +101,10 @@ Leave empty unless you use a custom domain.
 ## Good to know
 - Everything published on Pages is public. Placeholder data only.
 - Paste a complete page into **Paste your page** on the New demo form (ChatGPT prompt above). If that field is empty, the workflow asks you to paste and stops.
-- Template edits need the `protocol` label to pass `slug-guard`.
+- On pull requests, `slug-guard` blocks touching existing demos or anything outside `demos/`, and slugs that aren't lowercase-hyphenated ASCII. It runs from `main`'s copy, so a PR can't edit it to pass (edits to `slug-guard.yml` only take effect once merged).
+- Template edits need a repo admin to add the `protocol` label to pass `slug-guard`.
+- No clickable preview before merge by default; review the CI video. For per-branch previews, use **Cloudflare Pages** (output directory `demos`, no build command).
+- Artifacts need a GitHub login and expire after 90 days; the live `demo.mp4` on Pages doesn't.
 - Run locally: `npm install && npx playwright install --with-deps chromium`, then `node tools/smoke_record.mjs <slug>` (needs `ffmpeg`).
 
 ## Layout

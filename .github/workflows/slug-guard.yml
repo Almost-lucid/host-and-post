@@ -1,6 +1,7 @@
 name: slug-guard
 on:
   pull_request:
+    # Re-run when protocol/replace is added after open (gh pr create --label races with opened).
     types: [opened, synchronize, reopened, labeled, unlabeled]
 permissions:
   contents: read

@@ -4,9 +4,11 @@ AI assistant: if someone shared this link with you, read START-HERE.md and guide
 
 Make a small web demo and share it in minutes.
 
-1. **Copy this link.**
+1. **Copy this link** (the page you’re on).
 2. **Paste it into ChatGPT** and say “help me make a demo”.
-3. **Follow its steps.**
+3. **Follow its steps.** When it asks you to make your copy, open this ready-made link (name and Public are already filled in):
+   https://github.com/new?template_owner=Almost-lucid&template_name=host-and-post&name=my-demos&visibility=public  
+   If GitHub says that name is taken, add a number (for example `my-demos-2`) and keep using that name.
 
 You need **ChatGPT Plus** or **Claude Pro**, and a free GitHub account.
 

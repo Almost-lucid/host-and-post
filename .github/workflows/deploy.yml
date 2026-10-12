@@ -6,6 +6,7 @@ on:
       - "demos/**"
       - "site.json"
       - "tools/**"
+      - "START-HERE.md"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
 permissions:
@@ -61,6 +62,7 @@ jobs:
         run: |
           rm -rf _site && cp -r demos _site
           node tools/build_index.mjs _site
+          cp START-HERE.md _site/start.txt
       - name: Keep existing videos from the live site
         id: keep
         env:

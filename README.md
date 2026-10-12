@@ -19,6 +19,20 @@ idea issue → agent PR → CI smoke test + video → human merges (gate 1) → 
 1. Click **Use this template → Create a new repository**. Public is simplest (GitHub Pages is free for public repos).
 2. **Settings → Pages → Source: GitHub Actions.**
 3. **Require the checks**, so gate 1 can't be skipped. Open **Settings → Rules → Rulesets** (`https://github.com/<you>/<repo>/settings/rules`) → **New ruleset → New branch ruleset**: set enforcement to **Active**, target the default branch (`main`), tick **Require status checks to pass** and add `smoke-and-record` and `slug-guard`. Rulesets are free on public repos. Also create two labels: `replace` and `protocol`.
+
+   Or do steps 2 and 3 from a terminal with the GitHub CLI (`gh`), replacing `<you>/<repo>`:
+   ```sh
+   gh api -X POST repos/<you>/<repo>/pages -f build_type=workflow
+   gh label create replace -R <you>/<repo> -d "Allow changing an existing demo"
+   gh label create protocol -R <you>/<repo> -d "Change the template itself"
+   gh api -X POST repos/<you>/<repo>/rulesets --input - <<'JSON'
+   {"name": "gate 1", "target": "branch", "enforcement": "active",
+    "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}},
+    "rules": [{"type": "required_status_checks", "parameters": {"strict_required_status_checks_policy": false,
+      "required_status_checks": [{"context": "smoke-and-record"}, {"context": "slug-guard"}]}}]}
+   JSON
+   ```
+   The checks only appear in the ruleset's search box after they've run once, so type the names in if they aren't listed yet. With the ruleset on, changes to `main` have to go through a PR, including your own template edits (label those `protocol`).
 4. Choose a coding agent:
    - **Copilot coding agent** (needs a Copilot plan that includes it): open an idea issue and assign it to **Copilot**. Nothing else to configure. On Copilot's PRs, GitHub holds workflows until you click **Approve and run workflows**. Treat that click as part of gate 1: read the diff first.
    - **Claude Code GitHub Action:** install the Claude GitHub app (`/install-github-app` in Claude Code, or from GitHub Marketplace), add an `ANTHROPIC_API_KEY` repository secret, add `.github/workflows/claude.yml` (below), then comment `@claude build this per AGENTS.md` on the idea issue.

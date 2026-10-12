@@ -36,7 +36,7 @@ plain sentence → AI opens PR → CI smoke test + video → you Merge → live 
    Change **`your-name/your-repo`** to your GitHub owner and repo name. That's the only bit to swap. The AI reads [`AGENTS.md`](AGENTS.md) itself.
 
 ### What happens next
-The AI opens a pull request with `demos/<slug>/index.html` and `demos/<slug>/demo.json`. CI runs `smoke-and-record` (loads at 375px, fails on console errors, page errors, external requests or horizontal scroll, then records ~20s landscape and portrait videos) and `slug-guard` (blocks touching existing demos or anything outside `demos/`). Watch the video, then click **Merge**. The site goes live at `https://<you>.github.io/<repo>/<slug>/`, and a drafts comment appears on the PR with LinkedIn and X posts. Nothing is ever posted automatically.
+The AI opens a pull request with `demos/<slug>/index.html` and `demos/<slug>/demo.json`. CI runs `smoke-and-record` (loads at 375px, fails on console errors, page errors, external requests or horizontal scroll, then records ~20s landscape and portrait videos) and `slug-guard` (blocks touching existing demos or anything outside `demos/`, and slugs that aren't lowercase-hyphenated ASCII; it runs from `main`'s copy, so a PR can't edit it to pass, and since it blocks changes to `.github/` a PR can't weaken `smoke-and-record` either). Watch the video, then click **Merge**. The site goes live at `https://<you>.github.io/<repo>/<slug>/`, and a drafts comment appears on the PR with LinkedIn and X posts. Nothing is ever posted automatically.
 
 ### Read-only fallback
 If your connector can only read GitHub, ask the AI for the files, then in the repo use **Add file → Create/Upload files** into `demos/<slug>/`, choose **Create a new branch and start a pull request**, and commit. From checks onward everything is the same.
@@ -44,7 +44,7 @@ If your connector can only read GitHub, ask the AI for the files, then in the re
 ## Optional: Lock it down
 Needs repo admin. Without a ruleset, nothing technically stops an AI (or anyone with write access) pushing straight to `main`. [`AGENTS.md`](AGENTS.md) tells the AI to open a PR; a ruleset is what enforces it.
 
-Open **Settings → Rules → Rulesets** → **New branch ruleset**: enforcement **Active**, target `main`, tick **Require status checks to pass** and add `smoke-and-record` and `slug-guard`. Also create labels `replace` and `protocol`. Leave approvals off by default (GitHub won't let you approve your own PR).
+Open **Settings → Rules → Rulesets** → **New branch ruleset**: enforcement **Active**, target `main`, tick **Require status checks to pass** and add `smoke-and-record` and `slug-guard`. Also create labels `replace` and `protocol`. They only count when a repo admin adds them; `slug-guard` ignores them if anyone else does, including the AI. Leave approvals off by default (GitHub won't let you approve your own PR).
 
 Or from a terminal (`gh`), replacing `<you>/<repo>`:
 ```sh
@@ -57,7 +57,7 @@ gh api -X POST repos/<you>/<repo>/rulesets --input - <<'JSON'
    "required_status_checks": [{"context": "smoke-and-record"}, {"context": "slug-guard"}]}}]}
 JSON
 ```
-Type the check names in if they aren't listed yet. With the ruleset on, changes to `main` have to go through a PR (label template edits `protocol`).
+Type the check names in if they aren't listed yet. With the ruleset on, changes to `main` have to go through a PR (a repo admin labels template edits `protocol`).
 
 **Optional for teams** (others have write access): require 1 approving review. In the ruleset UI, tick **Require a pull request before merging** and set approvals to 1. Or add this rule next to `required_status_checks`:
 ```json
@@ -114,7 +114,7 @@ Copilot coding agent can only be assigned by people with write access, so it nee
 - **No clickable preview before merge by default.** Gate 1 reviews the CI screenshot and video. For per-branch previews, swap hosting to **Cloudflare Pages** (free): connect the repo, output directory `demos`, no build command.
 - **Artifacts** need a GitHub login and expire after 90 days by default. The live `demo.mp4` on Pages doesn't.
 - **Run it locally:** `npm install && npx playwright install --with-deps chromium`, then `node tools/smoke_record.mjs <slug>`. Needs `ffmpeg`.
-- Template edits (workflows, tools, docs) need the `protocol` label to pass `slug-guard`.
+- Template edits (workflows, tools, docs) need a repo admin to add the `protocol` label to pass `slug-guard`. Edits to `slug-guard.yml` only take effect once merged, because it runs from `main`.
 
 ## Layout
 ```

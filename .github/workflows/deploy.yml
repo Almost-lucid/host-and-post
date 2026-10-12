@@ -33,7 +33,7 @@ jobs:
         env:
           BEFORE: ${{ github.event.before }}
         run: |
-          all=$(for d in demos/*/; do [ -f "$d/index.html" ] && basename "$d"; done)
+          all=$(for d in demos/*/; do [ -f "$d/index.html" ] && basename "$d"; done | grep -E '^[a-z0-9]+(-[a-z0-9]+)*$' || true)
           if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
             BEFORE=$(git rev-parse -q --verify HEAD^ || true)
           fi
@@ -43,7 +43,7 @@ jobs:
             touched=$(git diff --name-only "$BEFORE" HEAD -- demos/ | awk -F/ 'NF>=3 {print $2}' | sort -u)
           fi
           # Only slugs that still exist; untouched ones reuse their live video.
-          touched=$(for s in $touched; do [ -f "demos/$s/index.html" ] && echo "$s"; done | tr '\n' ' ')
+          touched=$(for s in $touched; do case " $all " in *" $s "*) echo "$s";; esac; done | tr '\n' ' ')
           untouched=$(for s in $all; do case " $touched " in *" $s "*) ;; *) echo "$s";; esac; done | tr '\n' ' ')
           echo "touched=$touched" >> "$GITHUB_OUTPUT"
           echo "untouched=$untouched" >> "$GITHUB_OUTPUT"

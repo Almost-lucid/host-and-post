@@ -2,7 +2,6 @@
 name: New idea
 about: Describe a demo for a coding agent to build
 title: "Idea: "
-labels: idea
 ---
 
 **The idea** (one or two sentences)

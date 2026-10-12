@@ -8,8 +8,8 @@ permissions:
   id-token: write
   issues: write
 concurrency:
-  group: build-${{ github.event.issue.number }}
-  cancel-in-progress: true
+  group: pages
+  cancel-in-progress: false
 jobs:
   build:
     if: >-
@@ -194,6 +194,7 @@ jobs:
           fi
           rm -rf _site && cp -r demos _site
           node tools/build_index.mjs _site
+          cp START-HERE.md _site/start.txt
 
       - uses: actions/configure-pages@v5
         id: pages

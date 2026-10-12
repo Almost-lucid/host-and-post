@@ -6,11 +6,36 @@ From one short idea to a **live demo**, a **video**, and **two post drafts** —
 
 1. **Make your copy.** Click **Use this template → Create a new repository**, name it, then open **Settings → Pages → Source: GitHub Actions**.
 
-2. **Open a New demo.** Click **[New demo](../../issues/new?template=new-demo.yml)** (on your copy: `Issues → New issue → New demo`). Fill in **Your idea** and **What should it do?**, then Submit.
+2. **Open a New demo.** On a **laptop where you’re signed into GitHub**, either click **[New demo](../../issues/new?template=new-demo.yml)** and fill the form, or use the free ChatGPT prompt below to get a prefilled link.
 
 3. **Watch the issue.** You’ll see `Building…`, then a **Live** link, a **video** link, and LinkedIn / X drafts. **Nothing has been posted.**
 
-Optional: ask free ChatGPT to help write the idea and “what should it do?”, then paste that into the form.
+### Free ChatGPT → prefilled New demo link
+
+Do this on a laptop where you’re signed into GitHub. Paste the whole block into ChatGPT (free is fine):
+
+```text
+I want to open a GitHub "New demo" issue for my Host and Post repo.
+
+Ask me once for my GitHub username and repository name, then help me shape one small demo idea (one screen, one main action).
+
+Safety and simplicity rules for the demo (keep these when you write the spec):
+- Plain HTML/CSS/JS only; no frameworks, CDN, <script src>, fetch/XHR, backend, accounts, API keys, or personal data
+- Under ~300 lines; works at phone width; sample/placeholder data only
+- If it would need a server, fake it with sample data
+
+Then output exactly:
+1) A short plain-text idea (a few words) and a 3–5 line spec of what it should do.
+2) ONE URL (URL-encoded) in this exact shape, with query params in this order so a truncated link still keeps the title:
+https://github.com/<username>/<repo>/issues/new?template=new-demo.yml&title=<urlencode("New demo: " + idea)>&idea=<urlencode(idea)>&spec=<urlencode(spec)>
+
+Tell me to tap that link, check the form, then click Submit.
+If the link breaks, tell me to open Issues → New demo and paste the plain-text idea and spec myself.
+```
+
+Example of a generated link (for `Almost-lucid/hp-dryrun`):
+
+https://github.com/Almost-lucid/hp-dryrun/issues/new?template=new-demo.yml&title=New%20demo%3A%20tip%20splitter&idea=tip%20splitter&spec=Enter%20a%20bill%20in%20pounds%2C%20pick%20a%20tip%20percent%2C%20set%20how%20many%20people%2C%20and%20show%20what%20each%20person%20pays.
 
 ### What we won’t host
 No accounts, no real personal data, no secret API keys, no backends. Demos are small public static pages with sample data. If the idea needs a server, the build should fake it with placeholders.

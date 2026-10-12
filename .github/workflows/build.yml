@@ -1,0 +1,282 @@
+name: build
+on:
+  issues:
+    types: [opened]
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  issues: write
+concurrency:
+  group: build-${{ github.event.issue.number }}
+  cancel-in-progress: true
+jobs:
+  build:
+    if: >-
+      github.event.issue.user.login == github.repository_owner &&
+      (contains(github.event.issue.labels.*.name, 'build') ||
+       startsWith(github.event.issue.title, 'New demo:'))
+    runs-on: ubuntu-latest
+    outputs:
+      slug: ${{ steps.parse.outputs.slug }}
+      skip: ${{ steps.finalize.outputs.skip }}
+      smoke_ok: ${{ steps.smoke.outputs.smoke_ok }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Comment Building
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE=$(jq -r .issue.number "$GITHUB_EVENT_PATH")
+          REPO=$(jq -r .repository.full_name "$GITHUB_EVENT_PATH")
+          gh issue comment "$ISSUE" -R "$REPO" --body "Building…"
+
+      - name: Parse issue from event file
+        id: parse
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 <<'PY'
+          import json, os, re, pathlib
+          ev = json.load(open(os.environ["GITHUB_EVENT_PATH"]))
+          title = ev["issue"].get("title") or ""
+          body = ev["issue"].get("body") or ""
+
+          def field(*names):
+              for name in names:
+                  m = re.search(rf"###\s*{re.escape(name)}\s*\n+(.+?)(?=\n###|\Z)", body, re.S | re.I)
+                  if m and m.group(1).strip():
+                      return m.group(1).strip()
+              return ""
+
+          raw_page = field("Paste your page", "Page") or ""
+
+          def strip_fences(text):
+              t = text.strip()
+              t = re.sub(r"^```(?:html|HTML)?\s*\n?", "", t)
+              t = re.sub(r"\n?```\s*$", "", t)
+              return t.strip()
+
+          page = strip_fences(raw_page) if raw_page.strip() else ""
+          pathlib.Path("/tmp/page.html").write_text(page)
+
+          base = re.sub(r"^New demo:\s*", "", title, flags=re.I).strip().lower()
+          slug = re.sub(r"[^a-z0-9]+", "-", base).strip("-")
+          slug = re.sub(r"-+", "-", slug)[:48].strip("-") or "demo"
+          if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", slug):
+              slug = "demo"
+          root, n = slug, 2
+          while pathlib.Path(f"demos/{slug}/index.html").exists():
+              slug = f"{root}-{n}"
+              n += 1
+          pathlib.Path("/tmp/slug.txt").write_text(slug)
+          has_page = "yes" if page.strip() else "no"
+          with open(os.environ["GITHUB_OUTPUT"], "a") as o:
+              o.write(f"slug={slug}\n")
+              o.write(f"has_page={has_page}\n")
+              o.write(f"empty={'yes' if has_page != 'yes' else 'no'}\n")
+          print(f"slug={slug} has_page={has_page} page_bytes={len(page)}")
+          PY
+          EMPTY=$(python3 -c 'import pathlib; print("yes" if not pathlib.Path("/tmp/page.html").read_text().strip() else "no")')
+          if [ "$EMPTY" = "yes" ]; then
+            ISSUE=$(jq -r .issue.number "$GITHUB_EVENT_PATH")
+            REPO=$(jq -r .repository.full_name "$GITHUB_EVENT_PATH")
+            gh issue comment "$ISSUE" -R "$REPO" --body "Paste your page from ChatGPT into the form."
+          fi
+
+      - name: Guard HTML
+        id: guard
+        if: steps.parse.outputs.has_page == 'yes'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE=$(jq -r .issue.number "$GITHUB_EVENT_PATH")
+          REPO=$(jq -r .repository.full_name "$GITHUB_EVENT_PATH")
+          SLUG=$(cat /tmp/slug.txt)
+          set +e
+          MSG=$(python3 tools/guard_html.py /tmp/page.html)
+          code=$?
+          set -e
+          if [ "$code" != "0" ]; then
+            echo "$MSG" > /tmp/guard_fail.txt
+            gh issue comment "$ISSUE" -R "$REPO" --body "Could not publish: $MSG"
+            echo "skip=yes" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          python3 <<'PY'
+          import json, pathlib, re
+          html = pathlib.Path("/tmp/page.html").read_text(errors="replace")
+          slug = pathlib.Path("/tmp/slug.txt").read_text().strip()
+          d = pathlib.Path("demos") / slug
+          d.mkdir(parents=True, exist_ok=True)
+          (d / "index.html").write_text(html)
+          title_m = re.search(r"<title>(.*?)</title>", html, re.I | re.S)
+          desc_m = re.search(r'<meta\s+name=["\']description["\']\s+content=["\'](.*?)["\']', html, re.I | re.S)
+          title = (title_m.group(1).strip() if title_m else slug)
+          pitch = (desc_m.group(1).strip() if desc_m else title)
+          (d / "demo.json").write_text(json.dumps({"title": title, "pitch": pitch, "steps": []}, indent=2) + "\n")
+          print("wrote", d)
+          PY
+          echo "skip=no" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        if: steps.guard.outputs.skip == 'no'
+        with:
+          node-version: 20
+
+      - name: Smoke and record
+        id: smoke
+        if: steps.guard.outputs.skip == 'no'
+        env:
+          SOFT: "1"
+        run: |
+          SLUG=$(cat /tmp/slug.txt)
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          sudo apt-get install -y ffmpeg >/dev/null || true
+          SOFT=1 node tools/smoke_record.mjs "$SLUG" || true
+          python3 <<'PY'
+          import json, pathlib
+          slug = pathlib.Path("/tmp/slug.txt").read_text().strip()
+          ok = False
+          try:
+              data = json.loads(pathlib.Path("out/results.json").read_text())
+              row = next((r for r in data if r.get("slug") == slug), None)
+              ok = bool(row and row.get("ok"))
+          except Exception as e:
+              print("results missing", e)
+          pathlib.Path("/tmp/smoke_ok.txt").write_text("yes" if ok else "no")
+          print("smoke_ok", ok)
+          PY
+          mkdir -p "demos/$SLUG"
+          cp -f "out/$SLUG/video.mp4" "demos/$SLUG/demo.mp4" 2>/dev/null || true
+          cp -f "out/$SLUG/video-portrait.mp4" "demos/$SLUG/demo-portrait.mp4" 2>/dev/null || true
+          cp -f "out/$SLUG/screenshot.png" "demos/$SLUG/screenshot.png" 2>/dev/null || true
+          echo "smoke_ok=$(cat /tmp/smoke_ok.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Commit demo to main
+        if: steps.guard.outputs.skip == 'no'
+        run: |
+          SLUG=$(cat /tmp/slug.txt)
+          ISSUE=$(jq -r .issue.number "$GITHUB_EVENT_PATH")
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "demos/$SLUG"
+          if git diff --cached --quiet; then
+            echo "No changes"; exit 0
+          fi
+          git commit -m "Demo: $SLUG (from issue #$ISSUE)"
+          set +e
+          git pull --rebase origin main && git push origin HEAD:main
+          code=$?
+          if [ "$code" != "0" ]; then
+            echo "First push failed; retrying once after rebase"
+            git pull --rebase origin main && git push origin HEAD:main
+            code=$?
+          fi
+          set -e
+          exit "$code"
+
+      - name: Build site folder
+        if: steps.guard.outputs.skip == 'no'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE=$(jq -r .issue.number "$GITHUB_EVENT_PATH")
+          REPO=$(jq -r .repository.full_name "$GITHUB_EVENT_PATH")
+          if ! gh api "repos/${REPO}/pages" >/dev/null 2>&1; then
+            gh issue comment "$ISSUE" -R "$REPO" --body "GitHub Pages is off. Turn on Settings → Pages → Source: GitHub Actions, then re-run this workflow."
+            echo "skip=yes" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          rm -rf _site && cp -r demos _site
+          node tools/build_index.mjs _site
+
+      - uses: actions/configure-pages@v5
+        id: pages
+        if: steps.guard.outputs.skip == 'no' && env.skip != 'yes'
+
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.guard.outputs.skip == 'no' && env.skip != 'yes'
+        with:
+          path: _site
+
+      - name: Finalize skip flag
+        id: finalize
+        if: always()
+        env:
+          GUARD_SKIP: ${{ steps.guard.outputs.skip }}
+          ENV_SKIP: ${{ env.skip }}
+          HAS_PAGE: ${{ steps.parse.outputs.has_page }}
+          EMPTY: ${{ steps.parse.outputs.empty }}
+        run: |
+          if [ "$EMPTY" = "yes" ] || [ "$HAS_PAGE" != "yes" ]; then
+            echo "skip=yes" >> "$GITHUB_OUTPUT"
+          elif [ "$GUARD_SKIP" = "yes" ] || [ "$ENV_SKIP" = "yes" ]; then
+            echo "skip=yes" >> "$GITHUB_OUTPUT"
+          elif [ "$GUARD_SKIP" = "no" ]; then
+            echo "skip=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=yes" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Comment on unexpected failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE=$(jq -r .issue.number "$GITHUB_EVENT_PATH")
+          REPO=$(jq -r .repository.full_name "$GITHUB_EVENT_PATH")
+          gh issue comment "$ISSUE" -R "$REPO" --body "Build failed unexpectedly. Open the Actions tab for this run to see the log, then try again or paste a page into the New demo form."
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.skip == 'no' && needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Comment live link and drafts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SLUG: ${{ needs.build.outputs.slug }}
+          SMOKE_OK: ${{ needs.build.outputs.smoke_ok }}
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          ISSUE=$(jq -r .issue.number "$GITHUB_EVENT_PATH")
+          REPO=$(jq -r .repository.full_name "$GITHUB_EVENT_PATH")
+          python3 <<'PY'
+          import os, pathlib, json
+          slug = os.environ["SLUG"]
+          base = (os.environ.get("PAGE_URL") or "").rstrip("/")
+          if not base:
+              ev = json.load(open(os.environ["GITHUB_EVENT_PATH"]))
+              owner, name = ev["repository"]["full_name"].split("/", 1)
+              base = f"https://{owner.lower()}.github.io/{name}"
+          live = f"{base}/{slug}/"
+          video = f"{base}/{slug}/demo.mp4"
+          title = slug.replace("-", " ").title()
+          smoke_ok = os.environ.get("SMOKE_OK") == "yes"
+          linkedin = f"New demo: {title}.\n\nTry it: {live}\n20-second video: {video}\n\nNothing has been posted.\n\n#buildinpublic"
+          x = f"New demo: {title}. {live}"
+          lines = [f"### Live: {live}", f"**Video:** {video}", ""]
+          if not smoke_ok:
+              lines += ["⚠️ It failed its automated check, but it's published anyway so you can see it.", ""]
+          lines += [
+              "> **Nothing has been posted.** Drafts only — edit and publish yourself if you want.",
+              "",
+              "<details open><summary>LinkedIn draft</summary>",
+              "", "```text", linkedin, "```", "</details>", "",
+              f"<details open><summary>X draft ({len(x)}/280)</summary>",
+              "", "```text", x, "```", "</details>",
+          ]
+          pathlib.Path("/tmp/result_comment.md").write_text("\n".join(lines))
+          PY
+          gh issue comment "$ISSUE" -R "$REPO" --body-file /tmp/result_comment.md

@@ -1,19 +1,19 @@
-For people building in public with AI who want to turn ideas into live demos on their own GitHub and share them fast.
-
 # Host and Post
 
-Turn an idea into a working demo on your own GitHub, checked and recorded, with a draft post ready to share. You need **ChatGPT Plus** or **Claude Pro**, and a free GitHub account.
+Turn an idea into a live demo on your own GitHub, checked and recorded, with a draft post ready to share. Built for people building in public with AI.
 
-1. **Make your own copy.** Open this ready-made link (name and Public are filled in), then click **Create repository**. If the name is taken, add a number, like `my-demos-2`.
-   https://github.com/new?template_owner=Almost-lucid&template_name=host-and-post&name=my-demos&visibility=public
-2. **Turn on Pages.** Open `https://github.com/<your-username>/my-demos/settings/pages` and set **Source** to **GitHub Actions**.
-3. **Build and share.** Connect Codex or Claude to that one project, describe your idea, then click **Merge** on the pull request it opens. Your live link, a short video and draft posts appear as a comment on that pull request. Nothing is posted for you.
-
-Paste this sentence into ChatGPT or Claude and it will guide you through all three steps:
+**Start here:** paste this sentence into ChatGPT or Claude. You need **ChatGPT Plus** or **Claude Pro**, and a free GitHub account.
 
 ```text
 Read https://raw.githubusercontent.com/Almost-lucid/host-and-post/main/START-HERE.md and guide me step by step to put a small demo live on my own GitHub. Never ask me to paste passwords or codes into chat.
 ```
+
+It'll walk you through three steps:
+
+1. **Make your own copy.** Open this ready-made link (name and Public are filled in), then click **Create repository**. If the name is taken, add a number, like `my-demos-2`.
+   https://github.com/new?template_owner=Almost-lucid&template_name=host-and-post&name=my-demos&visibility=public
+2. **Turn on Pages.** Open `https://github.com/<your-username>/my-demos/settings/pages` and set **Source** to **GitHub Actions**.
+3. **Build and share.** Connect Codex or Claude to that one project, describe your idea, then click **Merge** on the pull request it opens. Your live link, a short video and draft LinkedIn and X posts appear as a comment on that pull request. Nothing is posted for you.
 
 The tip-splitter demo in your copy is only an example. Delete `demos/tip-splitter/` whenever you like.
 

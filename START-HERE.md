@@ -32,7 +32,7 @@ Send the user to `https://github.com/<username>/<name>/settings/pages`. Under **
 
 ## 3) Build and share
 
-**a. Connect Codex or Claude to that one project only** (both **untested** here):
+**a. Connect Codex or Claude to that one project only**:
 
 - **Codex** (ChatGPT Plus): connect GitHub when asked, only on OpenAI's page, and grant access to **only** `<username>/<name>`.
 - **Claude** (Claude Pro): install https://github.com/apps/claude/installations/select_target on **only** `<username>/<name>`, and connect Claude's GitHub connector if prompted.

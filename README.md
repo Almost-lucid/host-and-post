@@ -20,6 +20,8 @@ idea issue → agent PR → CI smoke test + video → human merges (gate 1) → 
 2. **Settings → Pages → Source: GitHub Actions.**
 3. **Require the checks**, so gate 1 can't be skipped. Open **Settings → Rules → Rulesets** (`https://github.com/<you>/<repo>/settings/rules`) → **New ruleset → New branch ruleset**: set enforcement to **Active**, target the default branch (`main`), tick **Require status checks to pass** and add `smoke-and-record` and `slug-guard`. Rulesets are free on public repos. Also create two labels: `replace` and `protocol`.
 
+   Leave approvals off by default. Gate 1 is the owner watching the video and clicking merge. GitHub won't let you approve your own PR, so requiring a review would lock out solo owners who build demos by hand.
+
    Or do steps 2 and 3 from a terminal with the GitHub CLI (`gh`), replacing `<you>/<repo>`:
    ```sh
    gh api -X POST repos/<you>/<repo>/pages -f build_type=workflow
@@ -33,6 +35,17 @@ idea issue → agent PR → CI smoke test + video → human merges (gate 1) → 
    JSON
    ```
    The checks only appear in the ruleset's search box after they've run once, so type the names in if they aren't listed yet. With the ruleset on, changes to `main` have to go through a PR, including your own template edits (label those `protocol`).
+
+   **Optional for teams** (others have write access): require 1 approving review. In the ruleset UI, tick **Require a pull request before merging** and set approvals to 1. Or add this rule next to `required_status_checks` in the JSON above:
+   ```json
+   {"type": "pull_request", "parameters": {
+     "required_approving_review_count": 1,
+     "dismiss_stale_reviews_on_push": true,
+     "require_code_owner_review": false,
+     "require_last_push_approval": true,
+     "required_review_thread_resolution": false}}
+   ```
+   `dismiss_stale_reviews_on_push` and `require_last_push_approval` stop a push after approval from still merging. That works for agent-opened PRs, because the owner isn't the author.
 4. Choose a coding agent:
    - **Copilot coding agent** (needs a Copilot plan that includes it): open an idea issue and assign it to **Copilot**. Nothing else to configure. On Copilot's PRs, GitHub holds workflows until you click **Approve and run workflows**. Treat that click as part of gate 1: read the diff first.
    - **Claude Code GitHub Action:** install the Claude GitHub app (`/install-github-app` in Claude Code, or from GitHub Marketplace), add an `ANTHROPIC_API_KEY` repository secret, add `.github/workflows/claude.yml` (below), then comment `@claude build this per AGENTS.md` on the idea issue.

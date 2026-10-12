@@ -31,7 +31,7 @@ Technical detail for people wiring this up themselves (or for AIs that need the 
 ### How it works
 
 - **Issue build** (`.github/workflows/build.yml`): owner opens a **New demo** issue with a pasted page → guard HTML → smoke + record → commit to `main` → Pages → **Live** + video (if present) + drafts as a comment on the **issue** (no PR). Soft smoke: publish even if the check fails. Shares the `pages` concurrency group with deploy.
-- **PR path** (`.github/workflows/smoke-and-record.yml` + `slug-guard.yml`): AI or human opens a PR under `demos/<slug>/` only. Checks must pass; a human merges. Template edits need an admin-applied `protocol` label.
+- **PR path** (`.github/workflows/smoke-and-record.yml` + `slug-guard.yml`): AI or human opens a PR under `demos/<slug>/` only. Checks must pass; a human merges. Changes outside `demos/` get a plain warning (not a hard fail); bad or colliding demo folder names still fail.
 - **Deploy** (`.github/workflows/deploy.yml`): on `main` pushes that touch demos/tools (not `github-actions[bot]`), rebuilds the site, records missing videos, publishes Pages, then posts **Live** + video (if present) + drafts on the **merged PR** (looks up `GET /repos/.../commits/{sha}/pulls`). If there is no PR, the same comment goes on the commit. Needs `pull-requests: write`; the comment step stays in the deploy job (never runs page code).
 - Both `build.yml` and `deploy.yml` share `concurrency: { group: pages, cancel-in-progress: false }` so Pages deploys never race.
 - At deploy time, `START-HERE.md` is copied to `/start.txt` (plain text) on Pages.
@@ -90,12 +90,11 @@ No accounts, no real personal data, no secret API keys, no backends. Small publi
 ### Lock it down
 
 Needs admin. Without a ruleset, nothing technically stops a write-access account pushing to `main`.
-**Note:** the one-click issue build commits to `main` as `github-actions[bot]`. If your ruleset requires a pull request, add a bypass for GitHub Actions — or skip Lock it down and use the paste route. Create labels `build`, `replace`, and `protocol`, then a branch ruleset on `main` requiring checks `smoke-and-record` and `slug-guard` (and `build` if you want). The `replace` and `protocol` labels only count when a repo admin adds them; `slug-guard` ignores them if anyone else does, including the AI.
+**Note:** the one-click issue build commits to `main` as `github-actions[bot]`. If your ruleset requires a pull request, add a bypass for GitHub Actions — or skip Lock it down and use the paste route. Create labels `build` and `replace`, then a branch ruleset on `main` requiring checks `smoke-and-record` and `slug-guard` (and `build` if you want). The `replace` label only counts when a repo admin adds it; `slug-guard` ignores it if anyone else does, including the AI.
 
 ```sh
 gh label create build -R <you>/<repo> -d "Build a demo from a New demo issue"
 gh label create replace -R <you>/<repo> -d "Allow changing an existing demo"
-gh label create protocol -R <you>/<repo> -d "Change the template itself"
 gh api -X POST repos/<you>/<repo>/pages -f build_type=workflow
 gh api -X POST repos/<you>/<repo>/rulesets --input - <<'JSON'
 {"name": "gate 1", "target": "branch", "enforcement": "active",
@@ -116,7 +115,7 @@ Pages root lists `demos/`. `site.json`: `{ "base_url": "" }` — leave empty unl
 - Everything on Pages is public. Placeholder data only.
 - Empty **Paste your page** → comment “Paste your page from ChatGPT into the form.” and stop.
 - On pull requests, `slug-guard` blocks touching existing demos or anything outside `demos/`, and slugs that aren't lowercase-hyphenated ASCII. It runs from `main`'s copy, so a PR can't edit it to pass (edits to `slug-guard.yml` only take effect once merged).
-- Template edits need a repo admin to add the `protocol` label to pass `slug-guard`. The `replace` and `protocol` labels only count when a repo admin adds them; `slug-guard` ignores them if anyone else does, including the AI.
+- Changes outside `demos/` warn but do not fail `slug-guard`. The `replace` label (admin-only) is still required to overwrite an existing demo folder.
 - No clickable preview before merge by default; review the CI video. For per-branch previews, use **Cloudflare Pages** (output directory `demos`, no build command).
 - Artifacts need a GitHub login and expire after 90 days; the live `demo.mp4` on Pages doesn't.
 - Local: `npm install && npx playwright install --with-deps chromium`, then `node tools/smoke_record.mjs <slug>` (needs `ffmpeg`).

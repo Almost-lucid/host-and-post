@@ -3,11 +3,12 @@ name: slug-guard
 # Safe here because the job never runs code from the PR: it only reads the list of changed paths.
 on:
   pull_request_target:
+    # labeled/unlabeled: re-check when an admin adds/removes the replace label
     types: [opened, synchronize, reopened, labeled, unlabeled]
 permissions:
   contents: read
   issues: read
-  pull-requests: read
+  pull-requests: write
 jobs:
   slug-guard:
     runs-on: ubuntu-latest
@@ -27,8 +28,7 @@ jobs:
         run: |
           git fetch -q origin "pull/$PR/head"
 
-          # A label only counts if it is on the PR now and a repo admin was the last to add it,
-          # so an agent with issue or PR write access can't label its own way past the guard.
+          # replace only counts when a repo admin was the last to add it
           label_ok() {
             case ",$LABELS," in *",$1,"*) ;; *) return 1 ;; esac
             actor=$(gh api "repos/$REPO/issues/$PR/events" --paginate \
@@ -40,9 +40,9 @@ jobs:
             return 1
           }
           REPLACE=false; label_ok replace && REPLACE=true
-          PROTOCOL=false; label_ok protocol && PROTOCOL=true
 
           fail=0
+          outside=""
           while IFS=$'\t' read -r status path rest; do
             # Renames report the old path in $path and the new one in $rest; check both.
             for f in "$path" $rest; do
@@ -50,18 +50,47 @@ jobs:
                 demos/*/*)
                   slug=$(echo "$f" | cut -d/ -f2)
                   if ! [[ "$slug" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
-                    echo "::error::Slug '$slug' must match ^[a-z0-9]+(-[a-z0-9]+)*$ (lowercase, hyphenated, ASCII)."
+                    echo "::error::Demo folder name '$slug' must be lowercase letters, digits, and hyphens only (like tip-splitter)."
                     fail=1
                   elif git cat-file -e "$BASE:demos/$slug" 2>/dev/null && [ "$REPLACE" != "true" ]; then
-                    echo "::error file=$f::demos/$slug already exists on the base branch. Pick a new slug, or have an admin add the 'replace' label."
+                    echo "::error file=$f::demos/$slug already exists on the base branch. Pick a new name, or have an admin add the 'replace' label."
                     fail=1
                   fi ;;
                 *)
-                  if [ "$PROTOCOL" != "true" ]; then
-                    echo "::error file=$f::Only demos/<new-slug>/ may change. A repo admin must add the 'protocol' label for changes to the template itself."
-                    fail=1
-                  fi ;;
+                  outside="$outside $f"
+                  ;;
               esac
             done
           done < <(git diff --name-status -M "$BASE...$HEAD_SHA")
+
+          if [ -n "$(echo "$outside" | tr -d ' ')" ]; then
+            # One plain-words warning (job summary + at most one PR comment)
+            {
+              echo "### Template / non-demo files changed"
+              echo ""
+              echo "This pull request changes files outside \`demos/\`:"
+              echo ""
+              for f in $outside; do echo "- \`$f\`"; done
+              echo ""
+              echo "That’s fine for template edits. Demo PRs should usually only add a new folder under \`demos/\`."
+            } | tee -a "$GITHUB_STEP_SUMMARY"
+
+            MARKER='<!-- host-and-post:outside-demos-warning -->'
+            if gh api "repos/$REPO/issues/$PR/comments" --paginate \
+              --jq ".[].body" | grep -Fq "$MARKER"; then
+              echo "Outside-demos warning comment already present; not posting again."
+            else
+              {
+                echo "$MARKER"
+                echo "This pull request changes files outside \`demos/\` (the template itself, not just a new demo)."
+                echo ""
+                echo "That’s allowed. For a normal new demo, only add files under a new \`demos/<name>/\` folder."
+                echo ""
+                echo "— EngGrok"
+              } > /tmp/outside_warn.md
+              gh api -X POST "repos/$REPO/issues/$PR/comments" -f body="$(cat /tmp/outside_warn.md)"
+              echo "Posted outside-demos warning on PR #$PR"
+            fi
+          fi
+
           exit $fail

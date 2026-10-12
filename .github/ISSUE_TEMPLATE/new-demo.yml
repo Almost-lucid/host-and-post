@@ -1,7 +1,6 @@
 name: New demo
 description: Describe a small demo and GitHub will try to build it
 title: "New demo: "
-labels: ["build"]
 body:
   - type: markdown
     attributes:

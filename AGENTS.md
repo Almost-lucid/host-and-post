@@ -10,7 +10,7 @@ You are building **one small static demo**. Follow these rules exactly. CI enfor
 ## Where you may write
 - Only add files in `demos/<new-slug>/`. Change nothing else in the repo.
 - `<new-slug>` is lowercase, hyphenated, ASCII: `^[a-z0-9]+(-[a-z0-9]+)*$` (e.g. `tip-splitter`).
-- Never modify or delete files in an existing `demos/<slug>/` unless the PR has the `replace` label. If the slug you want exists, pick another.
+- Never modify or delete files in an existing `demos/<slug>/`. If the slug you want exists, pick another.
 
 ## Simplicity
 - One screen; one main action.

@@ -1,7 +1,7 @@
 name: smoke-and-record
+# Required check: runs on every PR (no paths filter) and passes as a no-op when no demo changed.
 on:
   pull_request:
-    paths: ["demos/**"]
 permissions:
   contents: read
   pull-requests: write
@@ -22,7 +22,11 @@ jobs:
             | awk -F/ 'NF>=3 {print $2}' | sort -u \
             | while read -r s; do [ -f "demos/$s/index.html" ] && echo "$s"; done | tr '\n' ' ')
           echo "slugs=$slugs" >> "$GITHUB_OUTPUT"
-          echo "Changed slugs: ${slugs:-none}"
+          if [ -z "$slugs" ]; then
+            echo "No demo changes in this PR; nothing to smoke-test or record." | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Changed slugs: $slugs"
+          fi
       - uses: actions/setup-node@v4
         if: steps.slugs.outputs.slugs != ''
         with:

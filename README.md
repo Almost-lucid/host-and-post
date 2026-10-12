@@ -40,12 +40,12 @@ idea issue → agent PR → CI smoke test + video → human merges (gate 1) → 
    ```json
    {"type": "pull_request", "parameters": {
      "required_approving_review_count": 1,
-     "dismiss_stale_reviews_on_push": false,
+     "dismiss_stale_reviews_on_push": true,
      "require_code_owner_review": false,
-     "require_last_push_approval": false,
+     "require_last_push_approval": true,
      "required_review_thread_resolution": false}}
    ```
-   That works for agent-opened PRs, because the owner isn't the author.
+   `dismiss_stale_reviews_on_push` and `require_last_push_approval` stop a push after approval from still merging. That works for agent-opened PRs, because the owner isn't the author.
 4. Choose a coding agent:
    - **Copilot coding agent** (needs a Copilot plan that includes it): open an idea issue and assign it to **Copilot**. Nothing else to configure. On Copilot's PRs, GitHub holds workflows until you click **Approve and run workflows**. Treat that click as part of gate 1: read the diff first.
    - **Claude Code GitHub Action:** install the Claude GitHub app (`/install-github-app` in Claude Code, or from GitHub Marketplace), add an `ANTHROPIC_API_KEY` repository secret, add `.github/workflows/claude.yml` (below), then comment `@claude build this per AGENTS.md` on the idea issue.

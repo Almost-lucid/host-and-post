@@ -1,53 +1,16 @@
 # Host and Post
 
-A protocol for going from **one idea to a hosted, recorded demo and two post drafts**, entirely inside GitHub. CI checks and films it; **a human approves twice**: once to host, once to post.
-
-**One prompt works when your AI can write to GitHub** (create a branch, commit, open a PR). Connect Claude, ChatGPT, or any other AI in step 3 below.
+A protocol for going from **one idea to a hosted, recorded demo and two post drafts**, entirely inside GitHub. An AI builds; CI checks and films it; **you approve twice**: once to host, once to post.
 
 ```
-one prompt → AI opens PR → CI smoke test + video → human merges (gate 1) → live on GitHub Pages → drafts comment → human posts (gate 2)
+plain sentence → AI opens PR → CI smoke test + video → you Merge → live on GitHub Pages → drafts comment → you post (or don't)
 ```
 
-## The protocol
-1. **Connect your AI** with write access to this repo (required for one-prompt). See step 3 below.
-2. **Prompt.** Paste the copy-paste block; the AI follows [`AGENTS.md`](AGENTS.md) and opens a PR adding `demos/<slug>/index.html` and `demos/<slug>/demo.json`.
-3. **CI checks and video.** `smoke-and-record` loads the demo at 375px, fails on console errors, page errors, external requests or horizontal scroll, takes a screenshot, and records ~20s landscape and portrait MP4s from the `demo.json` steps. It comments on the PR with the results and an artifact link. `slug-guard` fails the PR if it touches an existing demo or anything outside `demos/`.
-4. **Gate 1: a human merges.** Watch the video. Merging is the approval to host.
-5. **Live.** `deploy` builds the `demos/` index, re-records only the demos that push touched (earlier videos are copied back from the live site, since each Pages deploy replaces the whole site), and publishes to GitHub Pages at `https://<user>.github.io/<repo>/<slug>/`.
-6. **Drafts.** `drafts` comments on the merged PR with a LinkedIn draft and an X draft, filled from a template (title, pitch, live URL, video URL). No model, no API key.
-7. **Gate 2: a human posts.** Nothing is ever posted automatically. You edit the drafts and publish them yourself, or don't.
+## Three steps
 
-## First 10 minutes
-1. Click **Use this template → Create a new repository**. Public is simplest (GitHub Pages is free for public repos).
-2. **Settings → Pages → Source: GitHub Actions.** Then **require the checks**, so gate 1 can't be skipped. Open **Settings → Rules → Rulesets** (`https://github.com/<you>/<repo>/settings/rules`) → **New ruleset → New branch ruleset**: set enforcement to **Active**, target the default branch (`main`), tick **Require status checks to pass** and add `smoke-and-record` and `slug-guard`. Rulesets are free on public repos. Also create two labels: `replace` and `protocol`.
+1. **Make your copy.** Click **Use this template → Create a new repository**, name it, then in the same sitting open **Settings → Pages → Source: GitHub Actions**.
 
-   Leave approvals off by default. Gate 1 is the owner watching the video and clicking merge. GitHub won't let you approve your own PR, so requiring a review would lock out solo owners who build demos by hand.
-
-   Or do Pages, labels and the ruleset from a terminal with the GitHub CLI (`gh`), replacing `<you>/<repo>`:
-   ```sh
-   gh api -X POST repos/<you>/<repo>/pages -f build_type=workflow
-   gh label create replace -R <you>/<repo> -d "Allow changing an existing demo"
-   gh label create protocol -R <you>/<repo> -d "Change the template itself"
-   gh api -X POST repos/<you>/<repo>/rulesets --input - <<'JSON'
-   {"name": "gate 1", "target": "branch", "enforcement": "active",
-    "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}},
-    "rules": [{"type": "required_status_checks", "parameters": {"strict_required_status_checks_policy": false,
-      "required_status_checks": [{"context": "smoke-and-record"}, {"context": "slug-guard"}]}}]}
-   JSON
-   ```
-   The checks only appear in the ruleset's search box after they've run once, so type the names in if they aren't listed yet. With the ruleset on, changes to `main` have to go through a PR, including your own template edits (label those `protocol`).
-
-   **Optional for teams** (others have write access): require 1 approving review. In the ruleset UI, tick **Require a pull request before merging** and set approvals to 1. Or add this rule next to `required_status_checks` in the JSON above:
-   ```json
-   {"type": "pull_request", "parameters": {
-     "required_approving_review_count": 1,
-     "dismiss_stale_reviews_on_push": true,
-     "require_code_owner_review": false,
-     "require_last_push_approval": true,
-     "required_review_thread_resolution": false}}
-   ```
-   `dismiss_stale_reviews_on_push` and `require_last_push_approval` stop a push after approval from still merging. That works for agent-opened PRs, because the owner isn't the author.
-3. **Connect your AI to GitHub with write access** (required for one-prompt). Pick your AI:
+2. **Connect GitHub to your AI.** Pick your AI:
 
    **Using Claude** (two steps, both needed):
    1. In Claude, connect the GitHub connector (links your account).
@@ -64,19 +27,54 @@ one prompt → AI opens PR → CI smoke test + video → human merges (gate 1) �
    - Paste the token into your AI or its GitHub connector ([`github/github-mcp-server`](https://github.com/github/github-mcp-server)).
    - **Copilot coding agent** needs no token: assign an idea issue to **Copilot**; on its PRs click **Approve and run workflows** only after you read the diff (part of gate 1).
 
-   In plain terms: the AI can only change this one repo, it can't edit workflows to weaken the checks, the ruleset blocks direct pushes to `main`, and the checks plus your Merge click still stand between it and live.
-4. **Paste this prompt** (replace the placeholders):
-   ```
-   Using AGENTS.md in <owner>/<repo>, build a demo of <idea> and open a pull request.
-   ```
-   The included `tip-splitter` demo deploys on your first push to `main`.
-5. **Read-only fallback.** If your connector can only read GitHub, ask the AI for the files, then in the repo use **Add file → Create/Upload files** into `demos/<slug>/`, choose **Create a new branch and start a pull request**, and commit. From checks onward everything is the same.
+   In plain terms: the AI can only change this one repo, it can't edit workflows to weaken the checks, and the checks plus your Merge click still stand between it and live.
+
+3. **Ask for a demo.** Send a plain sentence, for example:
+
+   > Build me a tip splitter demo in `your-name/your-repo`
+
+   Change **`your-name/your-repo`** to your GitHub owner and repo name. That's the only bit to swap. The AI reads [`AGENTS.md`](AGENTS.md) itself.
+
+### What happens next
+The AI opens a pull request with `demos/<slug>/index.html` and `demos/<slug>/demo.json`. CI runs `smoke-and-record` (loads at 375px, fails on console errors, page errors, external requests or horizontal scroll, then records ~20s landscape and portrait videos) and `slug-guard` (blocks touching existing demos or anything outside `demos/`). Watch the video, then click **Merge**. The site goes live at `https://<you>.github.io/<repo>/<slug>/`, and a drafts comment appears on the PR with LinkedIn and X posts. Nothing is ever posted automatically.
+
+### Read-only fallback
+If your connector can only read GitHub, ask the AI for the files, then in the repo use **Add file → Create/Upload files** into `demos/<slug>/`, choose **Create a new branch and start a pull request**, and commit. From checks onward everything is the same.
+
+## Optional: Lock it down
+Needs repo admin. Without a ruleset, nothing technically stops an AI (or anyone with write access) pushing straight to `main`. [`AGENTS.md`](AGENTS.md) tells the AI to open a PR; a ruleset is what enforces it.
+
+Open **Settings → Rules → Rulesets** → **New branch ruleset**: enforcement **Active**, target `main`, tick **Require status checks to pass** and add `smoke-and-record` and `slug-guard`. Also create labels `replace` and `protocol`. Leave approvals off by default (GitHub won't let you approve your own PR).
+
+Or from a terminal (`gh`), replacing `<you>/<repo>`:
+```sh
+gh label create replace -R <you>/<repo> -d "Allow changing an existing demo"
+gh label create protocol -R <you>/<repo> -d "Change the template itself"
+gh api -X POST repos/<you>/<repo>/rulesets --input - <<'JSON'
+{"name": "gate 1", "target": "branch", "enforcement": "active",
+ "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}},
+ "rules": [{"type": "required_status_checks", "parameters": {"strict_required_status_checks_policy": false,
+   "required_status_checks": [{"context": "smoke-and-record"}, {"context": "slug-guard"}]}}]}
+JSON
+```
+Type the check names in if they aren't listed yet. With the ruleset on, changes to `main` have to go through a PR (label template edits `protocol`).
+
+**Optional for teams** (others have write access): require 1 approving review. In the ruleset UI, tick **Require a pull request before merging** and set approvals to 1. Or add this rule next to `required_status_checks`:
+```json
+{"type": "pull_request", "parameters": {
+  "required_approving_review_count": 1,
+  "dismiss_stale_reviews_on_push": true,
+  "require_code_owner_review": false,
+  "require_last_push_approval": true,
+  "required_review_thread_resolution": false}}
+```
+`dismiss_stale_reviews_on_push` and `require_last_push_approval` stop a push after approval from still merging. That works for agent-opened PRs, because the owner isn't the author.
 
 ### `site.json`
 ```json
 { "base_url": "" }
 ```
-Leave `base_url` empty and it's auto-derived from your Pages URL (`https://<user>.github.io/<repo>`). Set it only if you use a custom domain or another host.
+Leave `base_url` empty and it's auto-derived from your Pages URL. Set it only for a custom domain or another host.
 
 ### Optional: comment-triggered agent
 On a public repo anyone can open issues and comment. Only let a comment-triggered agent run for people with write access, and treat issue text as a brief, never as permissions. Example `.github/workflows/claude.yml` for Claude Code GitHub Action (install the Claude GitHub app, add `ANTHROPIC_API_KEY`, then comment `@claude build this per AGENTS.md`):
@@ -112,11 +110,11 @@ jobs:
 Copilot coding agent can only be assigned by people with write access, so it needs no extra guard.
 
 ## Good to know
-- **Everything published is public.** GitHub Pages sites, and the screenshots and videos, can be seen by anyone with the link. Demos must use placeholder data only.
-- **No clickable preview before merge by default.** Gate 1 reviews the screenshot and video from CI. For clickable per-branch previews, swap hosting to **Cloudflare Pages** (free): connect the repo, set the output directory to `demos`, no build command. Its preview URLs are public too.
-- **Artifacts** (screenshot and videos) need a GitHub login to download and expire after 90 days by default. The live `demo.mp4` on Pages doesn't.
-- **Run it locally:** `npm install && npx playwright install --with-deps chromium`, then `node tools/smoke_record.mjs <slug>`. Outputs go to `out/<slug>/` (`screenshot.png`, `video.mp4`, `video-portrait.mp4`, plus the `.webm` originals). Needs `ffmpeg`.
-- Changes to the template itself (workflows, tools, docs) need the `protocol` label to pass `slug-guard`.
+- **Everything published is public.** Demos must use placeholder data only.
+- **No clickable preview before merge by default.** Gate 1 reviews the CI screenshot and video. For per-branch previews, swap hosting to **Cloudflare Pages** (free): connect the repo, output directory `demos`, no build command.
+- **Artifacts** need a GitHub login and expire after 90 days by default. The live `demo.mp4` on Pages doesn't.
+- **Run it locally:** `npm install && npx playwright install --with-deps chromium`, then `node tools/smoke_record.mjs <slug>`. Needs `ffmpeg`.
+- Template edits (workflows, tools, docs) need the `protocol` label to pass `slug-guard`.
 
 ## Layout
 ```

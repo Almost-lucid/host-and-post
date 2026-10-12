@@ -17,6 +17,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Check GitHub Pages is on
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          if ! gh api "repos/${REPO}/pages" >/dev/null 2>&1; then
+            echo "::error::GitHub Pages is off. Turn on Settings → Pages → Source: GitHub Actions, then re-run this workflow."
+            exit 1
+          fi
       - id: pages
         uses: actions/configure-pages@v5
       - name: Work out which demos this push touched
@@ -48,6 +57,7 @@ jobs:
         env:
           PAGES_URL: ${{ steps.pages.outputs.base_url }}
           UNTOUCHED: ${{ steps.slugs.outputs.untouched }}
+          TOUCHED: ${{ steps.slugs.outputs.touched }}
         run: |
           base=$(node -p "require('./site.json').base_url || ''")
           base=${base:-$PAGES_URL}; base=${base%/}
@@ -61,7 +71,7 @@ jobs:
               rm -f "_site/$s/demo.mp4"; missing="$missing $s"; echo "no live video for $s, will record it"
             fi
           done
-          echo "record=${{ steps.slugs.outputs.touched }}$missing" >> "$GITHUB_OUTPUT"
+          echo "record=${TOUCHED}${missing}" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v4
         if: steps.keep.outputs.record != ''
         with:
@@ -74,9 +84,11 @@ jobs:
           sudo apt-get install -y ffmpeg >/dev/null || true
       - name: Record touched (and missing) demos
         if: steps.keep.outputs.record != ''
+        env:
+          RECORD: ${{ steps.keep.outputs.record }}
         run: |
-          DEMOS_DIR=_site node tools/smoke_record.mjs ${{ steps.keep.outputs.record }}
-          for s in ${{ steps.keep.outputs.record }}; do
+          DEMOS_DIR=_site node tools/smoke_record.mjs $RECORD
+          for s in $RECORD; do
             cp "out/$s/video.mp4" "_site/$s/demo.mp4"
             cp "out/$s/video-portrait.mp4" "_site/$s/demo-portrait.mp4"
             cp "out/$s/screenshot.png" "_site/$s/screenshot.png"

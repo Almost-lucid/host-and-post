@@ -62,6 +62,7 @@ one prompt → AI opens PR → CI smoke test + video → human merges (gate 1) �
    - **Permissions:** Contents Read and write, Pull requests Read and write, Metadata Read (auto). Do **not** grant Workflows, Administration, or Secrets.
    - **Expiration:** 90 days.
    - Paste the token into your AI or its GitHub connector ([`github/github-mcp-server`](https://github.com/github/github-mcp-server)).
+   - **Copilot coding agent** needs no token: assign an idea issue to **Copilot**; on its PRs click **Approve and run workflows** only after you read the diff (part of gate 1).
 
    In plain terms: the AI can only change this one repo, it can't edit workflows to weaken the checks, the ruleset blocks direct pushes to `main`, and the checks plus your Merge click still stand between it and live.
 4. **Paste this prompt** (replace the placeholders):

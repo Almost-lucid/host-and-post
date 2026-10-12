@@ -1,14 +1,16 @@
 # Host and Post
 
-A protocol for going from **one idea to a hosted, recorded demo and two post drafts**, entirely inside GitHub. An AI coding agent builds; CI checks and films it; **a human approves twice**: once to host, once to post.
+A protocol for going from **one idea to a hosted, recorded demo and two post drafts**, entirely inside GitHub. CI checks and films it; **a human approves twice**: once to host, once to post.
+
+**One prompt works when your AI can write to GitHub** (create a branch, commit, open a PR): a coding agent (Claude Code, OpenAI Codex, GitHub Copilot coding agent), or any chat app connected to GitHub's official MCP server ([`github/github-mcp-server`](https://github.com/github/github-mcp-server); Claude custom connector; ChatGPT where custom MCP connectors are supported, probably).
 
 ```
-idea issue → agent PR → CI smoke test + video → human merges (gate 1) → live on GitHub Pages → drafts comment → human posts (gate 2)
+one prompt → AI opens PR → CI smoke test + video → human merges (gate 1) → live on GitHub Pages → drafts comment → human posts (gate 2)
 ```
 
 ## The protocol
-1. **Idea.** Open an issue with the *New idea* template: the idea, who it's for, and the one interaction to show.
-2. **Agent PR.** Assign the issue to a coding agent. It follows [`AGENTS.md`](AGENTS.md) and opens a PR adding `demos/<slug>/index.html` and `demos/<slug>/demo.json`.
+1. **Connect your AI** with write access to this repo (required for one-prompt). See step 3 below.
+2. **Prompt.** Paste the copy-paste block; the AI follows [`AGENTS.md`](AGENTS.md) and opens a PR adding `demos/<slug>/index.html` and `demos/<slug>/demo.json`.
 3. **CI checks and video.** `smoke-and-record` loads the demo at 375px, fails on console errors, page errors, external requests or horizontal scroll, takes a screenshot, and records ~20s landscape and portrait MP4s from the `demo.json` steps. It comments on the PR with the results and an artifact link. `slug-guard` fails the PR if it touches an existing demo or anything outside `demos/`.
 4. **Gate 1: a human merges.** Watch the video. Merging is the approval to host.
 5. **Live.** `deploy` builds the `demos/` index, re-records only the demos that push touched (earlier videos are copied back from the live site, since each Pages deploy replaces the whole site), and publishes to GitHub Pages at `https://<user>.github.io/<repo>/<slug>/`.
@@ -17,12 +19,11 @@ idea issue → agent PR → CI smoke test + video → human merges (gate 1) → 
 
 ## First 10 minutes
 1. Click **Use this template → Create a new repository**. Public is simplest (GitHub Pages is free for public repos).
-2. **Settings → Pages → Source: GitHub Actions.**
-3. **Require the checks**, so gate 1 can't be skipped. Open **Settings → Rules → Rulesets** (`https://github.com/<you>/<repo>/settings/rules`) → **New ruleset → New branch ruleset**: set enforcement to **Active**, target the default branch (`main`), tick **Require status checks to pass** and add `smoke-and-record` and `slug-guard`. Rulesets are free on public repos. Also create two labels: `replace` and `protocol`.
+2. **Settings → Pages → Source: GitHub Actions.** Then **require the checks**, so gate 1 can't be skipped. Open **Settings → Rules → Rulesets** (`https://github.com/<you>/<repo>/settings/rules`) → **New ruleset → New branch ruleset**: set enforcement to **Active**, target the default branch (`main`), tick **Require status checks to pass** and add `smoke-and-record` and `slug-guard`. Rulesets are free on public repos. Also create two labels: `replace` and `protocol`.
 
    Leave approvals off by default. Gate 1 is the owner watching the video and clicking merge. GitHub won't let you approve your own PR, so requiring a review would lock out solo owners who build demos by hand.
 
-   Or do steps 2 and 3 from a terminal with the GitHub CLI (`gh`), replacing `<you>/<repo>`:
+   Or do Pages, labels and the ruleset from a terminal with the GitHub CLI (`gh`), replacing `<you>/<repo>`:
    ```sh
    gh api -X POST repos/<you>/<repo>/pages -f build_type=workflow
    gh label create replace -R <you>/<repo> -d "Allow changing an existing demo"
@@ -46,10 +47,21 @@ idea issue → agent PR → CI smoke test + video → human merges (gate 1) → 
      "required_review_thread_resolution": false}}
    ```
    `dismiss_stale_reviews_on_push` and `require_last_push_approval` stop a push after approval from still merging. That works for agent-opened PRs, because the owner isn't the author.
-4. Choose a coding agent:
-   - **Copilot coding agent** (needs a Copilot plan that includes it): open an idea issue and assign it to **Copilot**. Nothing else to configure. On Copilot's PRs, GitHub holds workflows until you click **Approve and run workflows**. Treat that click as part of gate 1: read the diff first.
-   - **Claude Code GitHub Action:** install the Claude GitHub app (`/install-github-app` in Claude Code, or from GitHub Marketplace), add an `ANTHROPIC_API_KEY` repository secret, add `.github/workflows/claude.yml` (below), then comment `@claude build this per AGENTS.md` on the idea issue.
-5. Open an idea issue and go. The included `tip-splitter` demo deploys on your first push to `main`.
+3. **Connect your AI to GitHub with write access** (required for one-prompt). Create a [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new):
+   - **Repository access:** Only select repositories → this repo only.
+   - **Permissions:** Contents Read and write, Pull requests Read and write, Metadata Read (auto). Do **not** grant Workflows, Administration, or Secrets.
+   - **Expiration:** 90 days.
+   - Paste the token into your coding agent, or into the GitHub MCP connector in your chat app ([`github/github-mcp-server`](https://github.com/github/github-mcp-server)).
+
+   In plain terms: the AI can only change this one repo, it can't edit workflows to weaken the checks, the ruleset blocks direct pushes to `main`, and the checks plus your Merge click still stand between it and live.
+
+   Copilot coding agent needs no PAT: open an idea issue and assign it to **Copilot**. On Copilot's PRs, GitHub holds workflows until you click **Approve and run workflows**. Treat that click as part of gate 1: read the diff first.
+4. **Paste this prompt** (replace the placeholders):
+   ```
+   Using AGENTS.md in <owner>/<repo>, build a demo of <idea> and open a pull request.
+   ```
+   The included `tip-splitter` demo deploys on your first push to `main`.
+5. **Read-only fallback.** If your connector can only read GitHub, ask the AI for the files, then in the repo use **Add file → Create/Upload files** into `demos/<slug>/`, choose **Create a new branch and start a pull request**, and commit. From checks onward everything is the same.
 
 ### `site.json`
 ```json
@@ -57,8 +69,8 @@ idea issue → agent PR → CI smoke test + video → human merges (gate 1) → 
 ```
 Leave `base_url` empty and it's auto-derived from your Pages URL (`https://<user>.github.io/<repo>`). Set it only if you use a custom domain or another host.
 
-### Owner-only trigger (required for any agent you trigger from comments)
-On a public repo anyone can open issues and comment. Only let the agent run for people with write access, and treat issue text as a brief, never as permissions. Example `.github/workflows/claude.yml`:
+### Optional: comment-triggered agent
+On a public repo anyone can open issues and comment. Only let a comment-triggered agent run for people with write access, and treat issue text as a brief, never as permissions. Example `.github/workflows/claude.yml` for Claude Code GitHub Action (install the Claude GitHub app, add `ANTHROPIC_API_KEY`, then comment `@claude build this per AGENTS.md`):
 
 ```yaml
 name: claude

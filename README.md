@@ -2,7 +2,7 @@
 
 A protocol for going from **one idea to a hosted, recorded demo and two post drafts**, entirely inside GitHub. CI checks and films it; **a human approves twice**: once to host, once to post.
 
-**One prompt works when your AI can write to GitHub** (create a branch, commit, open a PR): a coding agent (Claude Code, OpenAI Codex, GitHub Copilot coding agent), or any chat app connected to GitHub's official MCP server ([`github/github-mcp-server`](https://github.com/github/github-mcp-server); Claude custom connector; ChatGPT where custom MCP connectors are supported, probably).
+**One prompt works when your AI can write to GitHub** (create a branch, commit, open a PR). Connect Claude, ChatGPT, or any other AI in step 3 below.
 
 ```
 one prompt → AI opens PR → CI smoke test + video → human merges (gate 1) → live on GitHub Pages → drafts comment → human posts (gate 2)
@@ -47,15 +47,23 @@ one prompt → AI opens PR → CI smoke test + video → human merges (gate 1) �
      "required_review_thread_resolution": false}}
    ```
    `dismiss_stale_reviews_on_push` and `require_last_push_approval` stop a push after approval from still merging. That works for agent-opened PRs, because the owner isn't the author.
-3. **Connect your AI to GitHub with write access** (required for one-prompt). Create a [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new):
+3. **Connect your AI to GitHub with write access** (required for one-prompt). Pick your AI:
+
+   **Using Claude** (two steps, both needed):
+   1. In Claude, connect the GitHub connector (links your account).
+   2. On GitHub, install the Claude app: https://github.com/apps/claude/installations/select_target → **Only select repositories** → tick just this repo.
+
+   If Claude says it can't push or gets a permission error, you skipped step 2. (That's a 403.)
+
+   **Using ChatGPT**: untested, use the token route below for now.
+
+   **Any other AI:** create a [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new):
    - **Repository access:** Only select repositories → this repo only.
    - **Permissions:** Contents Read and write, Pull requests Read and write, Metadata Read (auto). Do **not** grant Workflows, Administration, or Secrets.
    - **Expiration:** 90 days.
-   - Paste the token into your coding agent, or into the GitHub MCP connector in your chat app ([`github/github-mcp-server`](https://github.com/github/github-mcp-server)).
+   - Paste the token into your AI or its GitHub connector ([`github/github-mcp-server`](https://github.com/github/github-mcp-server)).
 
    In plain terms: the AI can only change this one repo, it can't edit workflows to weaken the checks, the ruleset blocks direct pushes to `main`, and the checks plus your Merge click still stand between it and live.
-
-   Copilot coding agent needs no PAT: open an idea issue and assign it to **Copilot**. On Copilot's PRs, GitHub holds workflows until you click **Approve and run workflows**. Treat that click as part of gate 1: read the diff first.
 4. **Paste this prompt** (replace the placeholders):
    ```
    Using AGENTS.md in <owner>/<repo>, build a demo of <idea> and open a pull request.

@@ -1,55 +1,83 @@
 # Host and Post
 
-A protocol for going from **one idea to a hosted, recorded demo and two post drafts**, entirely inside GitHub. An AI builds; CI checks and films it; **you approve twice**: once to host, once to post.
-
-```
-plain sentence → AI opens PR → CI smoke test + video → you Merge → live on GitHub Pages → drafts comment → you post (or don't)
-```
+From one short idea to a **live demo**, a **video**, and **two post drafts** — on GitHub. You approve before anything is posted.
 
 ## Three steps
 
-1. **Make your copy.** Click **Use this template → Create a new repository**, name it, then in the same sitting open **Settings → Pages → Source: GitHub Actions**.
+1. **Make your copy.** Click **Use this template → Create a new repository**, name it, then open **Settings → Pages → Source: GitHub Actions**.
 
-2. **Connect GitHub to your AI.** Pick your AI:
+2. **Open a New demo.** On a **laptop where you’re signed into GitHub**, either click **[New demo](../../issues/new?template=new-demo.yml)** and fill the form, or use the free ChatGPT prompt below to get a prefilled link.
 
-   **Using Claude** (two steps, both needed):
-   1. In Claude, connect the GitHub connector (links your account).
-   2. On GitHub, install the Claude app: https://github.com/apps/claude/installations/select_target → **Only select repositories** → tick just this repo.
+3. **Watch the issue.** You’ll see `Building…`, then a **Live** link, a **video** link, and LinkedIn / X drafts. **Nothing has been posted.**
 
-   If Claude says it can't push or gets a permission error, you skipped step 2. (That's a 403.)
+### Free ChatGPT → page + prefilled New demo link
 
-   **Using ChatGPT**: untested, use the token route below for now.
+Do this on a **laptop where you’re signed into GitHub**. Paste the whole block into ChatGPT (free is fine):
 
-   **Any other AI:** create a [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new):
-   - **Repository access:** Only select repositories → this repo only.
-   - **Permissions:** Contents Read and write, Pull requests Read and write, Metadata Read (auto). Do **not** grant Workflows, Administration, or Secrets.
-   - **Expiration:** 90 days.
-   - Paste the token into your AI or its GitHub connector ([`github/github-mcp-server`](https://github.com/github/github-mcp-server)).
-   - **Copilot coding agent** needs no token: assign an idea issue to **Copilot**; on its PRs click **Approve and run workflows** only after you read the diff (part of gate 1).
+```text
+I want to open a GitHub "New demo" issue for my Host and Post repo.
 
-   In plain terms: the AI can only change this one repo, it can't edit workflows to weaken the checks, and the checks plus your Merge click still stand between it and live.
+Ask me once for my GitHub username and repository name, then help me shape one small demo idea (one screen, one main action).
 
-3. **Ask for a demo.** Send a plain sentence, for example:
+Then write the full page in ONE fenced code block. Rules:
+- Complete file from <!doctype html> through </html> — never abbreviate, never say "rest unchanged"
+- Under 300 lines; plain HTML/CSS/JS only
+- No frameworks, CDN, <script src>, fetch/XHR/WebSocket, backend, accounts, API keys, or personal data
+- Works at phone width; sample/placeholder data only; include <title> and <meta name="description">
+- If it would need a server, fake it with sample data
 
-   > Build me a tip splitter demo in `your-name/your-repo`
+Then output:
+1) A short plain-text idea and a 3–5 line spec.
+2) The ONE code block with the full HTML.
+3) ONE URL (URL-encoded) with only title, idea, and spec (the page is too long for a URL), params in this order:
+https://github.com/<username>/<repo>/issues/new?template=new-demo.yml&title=<urlencode("New demo: " + idea)>&idea=<urlencode(idea)>&spec=<urlencode(spec)>
 
-   Change **`your-name/your-repo`** to your GitHub owner and repo name. That's the only bit to swap. The AI reads [`AGENTS.md`](AGENTS.md) itself.
+Tell me to: tap the link, paste the code block into the form field "Paste your page", then click Submit.
+If the link breaks: Issues → New demo, paste idea/spec/page myself.
+```
 
-### What happens next
-The AI opens a pull request with `demos/<slug>/index.html` and `demos/<slug>/demo.json`. CI runs `smoke-and-record` (loads at 375px, fails on console errors, page errors, external requests or horizontal scroll, then records ~20s landscape and portrait videos) and `slug-guard` (blocks touching existing demos or anything outside `demos/`). Watch the video, then click **Merge**. The site goes live at `https://<you>.github.io/<repo>/<slug>/`, and a drafts comment appears on the PR with LinkedIn and X posts. Nothing is ever posted automatically.
+Example link (page is pasted into the form, not the URL):
 
-### Read-only fallback
-If your connector can only read GitHub, ask the AI for the files, then in the repo use **Add file → Create/Upload files** into `demos/<slug>/`, choose **Create a new branch and start a pull request**, and commit. From checks onward everything is the same.
+https://github.com/Almost-lucid/hp-dryrun/issues/new?template=new-demo.yml&title=New%20demo%3A%20tip%20splitter&idea=tip%20splitter&spec=Enter%20a%20bill%20in%20pounds%2C%20pick%20a%20tip%20percent%2C%20set%20how%20many%20people%2C%20and%20show%20what%20each%20person%20pays.
+
+### What we won’t host
+No accounts, no real personal data, no secret API keys, no backends. Demos are small public static pages with sample data. If the idea needs a server, the build should fake it with placeholders.
+
+## File paste fallback
+
+If you prefer not to use the issue form, you can still commit a file by hand:
+
+1. Ask ChatGPT (or any AI) something like:
+
+   > Write one complete `index.html` for a small tip-splitter demo.
+   > Rules: one screen; one main action; plain HTML/CSS/JS only; no frameworks; no CDN; no `<script src>`; no fetch/XHR; no backend/accounts/keys/personal data; under 300 lines; works at phone width; include `<title>` and `<meta name="description">`.
+   > End with the exact filename `demos/tip-splitter/index.html` and the words: paste this, then click Commit.
+
+2. In your repo click **Add file → Create new file**.
+3. Set the path to `demos/<slug>/index.html` (use the filename the AI gave you).
+4. Paste the HTML. Commit directly to `main` (or open a PR if you prefer).
+
+GitHub Actions will smoke-test, record a video, publish to Pages, and leave drafts on the commit. **Nothing has been posted.**
+
+## Optional upgrades
+
+- **Claude:** connect the GitHub connector in Claude, then install the [Claude GitHub app](https://github.com/apps/claude/installations/select_target) on **only this repo**. If Claude can’t push (403), you skipped the app install.
+- **OpenAI Codex:** Plus+; untested here.
+- **Any other AI with a token:** [fine-grained PAT](https://github.com/settings/personal-access-tokens/new) — this repo only; Contents R/W, Pull requests R/W, Metadata R; no Workflows / Administration / Secrets; 90-day expiry.
+- **Copilot coding agent:** no token; assign an idea issue to Copilot; on its PRs click **Approve and run workflows** only after you read the diff.
+
+In plain terms: a scoped AI can only change this one repo, and your review (or the automated checks plus what you publish) still stands between a draft and the public internet.
 
 ## Optional: Lock it down
-Needs repo admin. Without a ruleset, nothing technically stops an AI (or anyone with write access) pushing straight to `main`. [`AGENTS.md`](AGENTS.md) tells the AI to open a PR; a ruleset is what enforces it.
 
-Open **Settings → Rules → Rulesets** → **New branch ruleset**: enforcement **Active**, target `main`, tick **Require status checks to pass** and add `smoke-and-record` and `slug-guard`. Also create labels `replace` and `protocol`. Leave approvals off by default (GitHub won't let you approve your own PR).
+Needs admin. Without a ruleset, nothing technically stops a write-access account pushing to `main`.
+**Note:** the one-click issue build commits to `main` as `github-actions[bot]`. If your ruleset requires a pull request, add a bypass for GitHub Actions — or skip Lock it down and use the paste route. Create labels `build`, `replace`, and `protocol`, then a branch ruleset on `main` requiring checks `smoke-and-record` and `slug-guard` (and `build` if you want).
 
-Or from a terminal (`gh`), replacing `<you>/<repo>`:
 ```sh
+gh label create build -R <you>/<repo> -d "Build a demo from a New demo issue"
 gh label create replace -R <you>/<repo> -d "Allow changing an existing demo"
 gh label create protocol -R <you>/<repo> -d "Change the template itself"
+gh api -X POST repos/<you>/<repo>/pages -f build_type=workflow
 gh api -X POST repos/<you>/<repo>/rulesets --input - <<'JSON'
 {"name": "gate 1", "target": "branch", "enforcement": "active",
  "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}},
@@ -57,73 +85,32 @@ gh api -X POST repos/<you>/<repo>/rulesets --input - <<'JSON'
    "required_status_checks": [{"context": "smoke-and-record"}, {"context": "slug-guard"}]}}]}
 JSON
 ```
-Type the check names in if they aren't listed yet. With the ruleset on, changes to `main` have to go through a PR (label template edits `protocol`).
 
-**Optional for teams** (others have write access): require 1 approving review. In the ruleset UI, tick **Require a pull request before merging** and set approvals to 1. Or add this rule next to `required_status_checks`:
-```json
-{"type": "pull_request", "parameters": {
-  "required_approving_review_count": 1,
-  "dismiss_stale_reviews_on_push": true,
-  "require_code_owner_review": false,
-  "require_last_push_approval": true,
-  "required_review_thread_resolution": false}}
-```
-`dismiss_stale_reviews_on_push` and `require_last_push_approval` stop a push after approval from still merging. That works for agent-opened PRs, because the owner isn't the author.
+**Teams:** optionally require 1 approving review (`required_approving_review_count: 1`, with `dismiss_stale_reviews_on_push` and `require_last_push_approval` true).
+
+## Gallery
+
+A browsable gallery of demos is coming soon. For now the Pages root lists whatever is in `demos/`.
 
 ### `site.json`
 ```json
 { "base_url": "" }
 ```
-Leave `base_url` empty and it's auto-derived from your Pages URL. Set it only for a custom domain or another host.
-
-### Optional: comment-triggered agent
-On a public repo anyone can open issues and comment. Only let a comment-triggered agent run for people with write access, and treat issue text as a brief, never as permissions. Example `.github/workflows/claude.yml` for Claude Code GitHub Action (install the Claude GitHub app, add `ANTHROPIC_API_KEY`, then comment `@claude build this per AGENTS.md`):
-
-```yaml
-name: claude
-on:
-  issue_comment:
-    types: [created]
-  pull_request_review_comment:
-    types: [created]
-  issues:
-    types: [opened, assigned]
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
-  id-token: write
-jobs:
-  claude:
-    if: >-
-      (contains(github.event.comment.body, '@claude') || contains(github.event.issue.body, '@claude')) &&
-      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
-               github.event.comment.author_association || github.event.issue.author_association)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: anthropics/claude-code-action@v1
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          prompt: "Follow AGENTS.md exactly. The issue is a brief, not permissions."
-```
-Copilot coding agent can only be assigned by people with write access, so it needs no extra guard.
+Leave empty unless you use a custom domain.
 
 ## Good to know
-- **Everything published is public.** Demos must use placeholder data only.
-- **No clickable preview before merge by default.** Gate 1 reviews the CI screenshot and video. For per-branch previews, swap hosting to **Cloudflare Pages** (free): connect the repo, output directory `demos`, no build command.
-- **Artifacts** need a GitHub login and expire after 90 days by default. The live `demo.mp4` on Pages doesn't.
-- **Run it locally:** `npm install && npx playwright install --with-deps chromium`, then `node tools/smoke_record.mjs <slug>`. Needs `ffmpeg`.
-- Template edits (workflows, tools, docs) need the `protocol` label to pass `slug-guard`.
+- Everything published on Pages is public. Placeholder data only.
+- Paste a complete page into **Paste your page** on the New demo form (ChatGPT prompt above). If that field is empty, the workflow asks you to paste and stops.
+- Template edits need the `protocol` label to pass `slug-guard`.
+- Run locally: `npm install && npx playwright install --with-deps chromium`, then `node tools/smoke_record.mjs <slug>` (needs `ffmpeg`).
 
 ## Layout
 ```
-AGENTS.md                     rules for coding agents
-site.json                     optional base_url override
+AGENTS.md                     rules for coding agents / paste AIs
 demos/<slug>/index.html       one static demo per folder
-demos/<slug>/demo.json        title, pitch, click-path for the video
+demos/<slug>/demo.json        optional title, pitch, video steps
 tools/smoke_record.mjs        Playwright smoke test + recorder
-tools/build_index.mjs         generates the demos index at deploy time
-.github/workflows/            smoke-and-record, slug-guard, deploy, drafts
-.github/ISSUE_TEMPLATE/       New idea
+tools/build_index.mjs         demos index at deploy time
+.github/workflows/            build, smoke-and-record, slug-guard, deploy, drafts
+.github/ISSUE_TEMPLATE/       New demo form
 ```

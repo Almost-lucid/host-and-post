@@ -28,8 +28,8 @@ You are building **one small static demo**. Follow these rules exactly. CI enfor
 - Mobile-first: it must work at 375×812 with **no horizontal scroll** (`document.documentElement.scrollWidth <= 375`) and **no console errors or uncaught exceptions**. Use `box-sizing: border-box` and fluid widths.
 - Include `<meta name="viewport" content="width=device-width,initial-scale=1">`.
 
-## demo.json (required)
-Add `demos/<slug>/demo.json`. CI uses it to record a ~20-second video and to fill the post drafts.
+## demo.json (optional)
+Add `demos/<slug>/demo.json` when you can. CI uses it to record a ~20-second video and to fill the post drafts.
 
 ```json
 {

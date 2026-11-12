@@ -25,7 +25,7 @@ The tip-splitter demo in your copy is only an example. Delete `demos/tip-splitte
 - **Pull requests** (`smoke-and-record.yml`, `slug-guard.yml`): the AI opens a PR under `demos/<slug>/`. `smoke-and-record` loads the page at 375px, fails on console errors or horizontal scroll, and records a video. `slug-guard` fails if a demo folder name isn't lowercase-hyphenated ASCII. You merge.
 - **Deploy** (`deploy.yml`): on pushes to `main`, rebuilds the site, records missing videos, publishes to Pages, then comments **Live** + video + LinkedIn / X drafts on the merged PR (or on the commit if there's no PR).
 - **Issue build** (`build.yml`): runs on **New demo** issues opened by the repo owner; guards the pasted HTML, smoke-tests, commits to `main`, publishes, and comments on the issue. Shares the `pages` concurrency group with deploy.
-- **Connect an AI** (both **untested**): Codex: connect GitHub on OpenAI's page and grant only this repo. Claude: install the [Claude GitHub app](https://github.com/apps/claude/installations/select_target) on only this repo.
+- **Connect an AI** (not yet tested end to end): Codex: connect GitHub on OpenAI's page and grant only this repo. Claude: install the [Claude GitHub app](https://github.com/apps/claude/installations/select_target) on only this repo.
 - **What fits:** small public static pages with sample data. No accounts, personal data, secret keys or backends. Everything on Pages is public.
 - **`site.json`:** `{ "base_url": "" }`. Leave empty unless you use a custom domain.
 - **Local:** `npm install && npx playwright install --with-deps chromium`, then `node tools/smoke_record.mjs <slug>` (needs `ffmpeg`). `python3 tools/test_guard_html.py` and `bash tools/test_check_slugs.sh` run the tests.
